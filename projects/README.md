@@ -2,7 +2,7 @@
 
 -- A variety of projects completed for the G.T. class CSE 6242, Data and Visual Analytics 
 
-1) Lego Rebrickable Data Manipulation and Visualization 
+1) Lego Rebrickable Data Manipulation and Visualization /n
   -Q1:
     1 - bricks_graph.gefx - an undirected graph of related lego sets. Data mined from rebrickable API. Requires gephi 0.9.2 to view
     2 - graph.png - image of graph in its entirety
