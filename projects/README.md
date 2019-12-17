@@ -69,7 +69,7 @@
   -Q5:
     1 - results.csv - output from using Microsoft Azure's machine learning labratory
     
-4) TBD
+4) Statistical Algorithms 
   Q1:
     1 - pagerank.py - python script for implementation of simple pagerank algorithm 
     2 - 5: outputs from running script on different seeds with differing numbers of outputs
@@ -79,4 +79,4 @@
     3 - random_forest.py - manual implementation of a random forest algorithim
     4 - util.py - functions used in decision_tree.py
   Q3:
-    1 - hw4q3.ipynb - jupyter notebook using scikit learn to fit and manipulate several different models 
+    1 - hw4q3.ipynb - jupyter notebook using scikit learn to fit and manipulate several different types of models 
