@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<style type = "text/css">
+	.line {
+		fill: none;
+		stroke-width: 3;
+	}
+
+	.overlay {
+		fill: none;
+		pointer-events: all;
+	}
+
+	.dots {
+		fill: #ffab00;
+		stroke: #fff;
+	}
+
+	.focus circle {
+		fill: none;
+		stroke: steelblue;
+	}
+
+	.pagebreak {
+		page-break-before: always;
+	}
+</style>
+<body>
+</body>
+<script src="../lib/d3.v5.min.js"></script>
+
+<script>
+	var margin = {top: 50, right: 500, bottom: 50, left: 50}
+		, width = window.innerWidth - margin.left - margin.right
+		, height = window.innerHeight - margin.top - margin.bottom;
+
+	//this should probs be in the then and be data.length but I'll ingore that for now
+	var n = 16;
+
+	//title padding
+	var title_pad =  25;
+
+	//i might use this to separate the four graphs
+	var graph_buffer = 50;
+
+
+
+
+	//var dataset = d3.range(n).map(function(d) {return {"y": d3.randomUniform(10000)()}})
+	//ok it gets unreadable from here
+	d3.csv("earthquakes.csv").then(function(data) {
+
+			var five_quake = data.map(function(d){
+				return {"y": d['5_5.9'],
+						"year": d["year"],
+						"num_deaths": +d["Estimated Deaths"]};
+			})
+
+
+			//the only way I could get d3.max to actually return a number
+			list = []
+			five_quake.forEach(function(d){
+				list.push(d.y);
+			})
+
+			var parse = d3.timeParse('%Y')
+			var years = data.map(function(d){
+				return parse(+d.year);
+			})
+
+			//I should have more comments so I can read my own nonsense 
+			//anyway I have multiple scales for each set of graphs, probably stupid
+
+			var xScale = d3.scaleTime()
+				.domain([d3.min(years), d3.max(years)])
+				.range([0, width]);
+
+			var yScale = d3.scaleLinear()
+				.domain([0, d3.max(list)])
+				.range([height, title_pad]);
+
+			//this function is sufficient to magic in my imagination but it gets the lines
+			var line = d3.line()
+				.x(function(d) {
+					return xScale(parse(d.year));
+				})
+				.y(function(d) {
+					return yScale(d.y);
+				})
+				.curve(d3.curveMonotoneX);
+			
+			//svg or something lol
+			var svg = d3.select("body").append("svg")
+				.attr("width", width  + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+			//x axis
+			svg.append("g")
+				.attr("class", "x axis")
+				.attr("transform", "translate(0," + height + ")")
+				.call(d3.axisBottom(xScale));
+
+			//ok this is the y axis
+			svg.append("g")
+				.attr("class", "y axis")
+				.call(d3.axisLeft(yScale));
+
+			//title
+			svg.append("text")
+				.attr("class", "title")
+				.attr("transform", "translate(" + width / 2 + ", 0)")
+				.text("Worldwide Earthquake Stats 2000 - 2015")
+				.style("text-anchor", "middle");
+
+			//legend maybe
+			var keys = ["5_5.9", "6_6.9", "7_7.9", "8.0+"]
+
+			var color = d3.scaleOrdinal()
+				.domain(keys)
+				.range(["#FFC300", "#FF5733", "#C70039", "#900C3F"])
+
+			var size = 20
+			svg.selectAll("legend_square")
+			  .data(keys)
+			  .enter()
+			  .append("rect")
+				.attr("x", width - 10)
+			    .attr("y", function(d,i){ return 25 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+			    .attr("width", size)
+			    .attr("height", size)
+			    .style("fill", function(d){ return color(d)})
+
+			svg.selectAll("labels")
+			    .data(keys)
+			  .enter()
+			    .append("text")
+			    .attr("x", width - 10 + size*1.2)
+		        .attr("y", function(d,i){ return 25 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+	    		.style("fill", "black") //function(d){ return color(d)})
+			    .text(function(d){ return d})
+			    .attr("text-anchor", "left")
+			    .style("alignment-baseline", "middle");
+
+			//and the x axis label is here for some inexplicable reason
+			svg.append("text")             
+      			.attr("transform", "translate(" + (width/ 2) + " ," + (height + margin.top) + ")")
+      			.style("text-anchor", "middle")
+      			.text("Year");
+
+      		//y axis label
+      		svg.append("text")
+		      .attr("transform", "rotate(-90)")
+		      .attr("y", 0 - margin.left)
+		      .attr("x",0 - (height / 2))
+		      .attr("dy", "1em")
+		      .style("text-anchor", "middle")
+		      .text("Number of Quakes");   
+
+		    //don't think this is even used anymore
+			var k = data.length;
+			
+
+			//make each one so i can make lines
+			var six_quake = data.map(function(d) {
+				return {"y": d['6_6.9'],
+						"year": d["year"],
+						"num_deaths": +d["Estimated Deaths"]};}
+			);
+
+			var seven_quake = data.map(function(d){
+				return{"y": d['7_7.9'],
+						"year": d["year"],
+						"num_deaths": +d["Estimated Deaths"]};
+				});
+
+			var eight_quake = data.map(function(d){
+				return{"y": d["8.0+"],
+						"year": d["year"],
+						"num_deaths": +d["Estimated Deaths"]};
+				})
+
+			//now drawing lines for each subset
+			svg.append("path")
+				.datum(five_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FFC300")
+				.attr("d", line);
+			
+			svg.append("path")
+				.datum(six_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FF5733")
+				.attr("d", line);
+
+			svg.append("path")
+				.datum(seven_quake)
+				.attr("class", "line")
+				.attr("stroke", "#C70039")
+				.attr("d", line);
+
+			svg.append("path")
+				.datum(eight_quake)
+				.attr("class", "line")
+				.attr("stroke", "#900C3F")
+				.attr("d", line);
+
+			svg.append("div")
+				.attr("class", "pagebreak");
+
+			//svg2 for second graph with dots
+			var svg2 = d3.select("body").append("svg")
+				.attr("width", width  + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+			svg2.append("g")
+				.attr("class", "x axis")
+				.attr("transform", "translate(0," + height + ")")
+				.call(d3.axisBottom(xScale));
+
+			//2nd set of scales for 2nd graph (2 more to come probably)
+			/*var xScale2 = d3.scaleTime()
+				.domain([d3.min(years), d3.max(years)])
+				.range([0, width]);
+
+			var yScale2 = d3.scaleLinear()
+				.domain([0, d3.max(list)])
+				.range([height, 0]);*/
+
+			//title2
+			svg2.append("text")
+				.attr("class", "title")
+				.attr("transform", "translate(" + width / 2 + ", 0)")
+				.text("Worldwide Earthquake Stats 2000 - 2015 with Symbols")
+				.style("text-anchor", "middle");
+
+			//legend 2
+			svg2.selectAll("legend_square")
+			  .data(keys)
+			  .enter()
+			  .append("rect")
+				.attr("x", width - 10)
+			    .attr("y", function(d,i){ return 25 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+			    .attr("width", size)
+			    .attr("height", size)
+			    .style("fill", function(d){ return color(d)})
+
+			svg2.selectAll("labels")
+			    .data(keys)
+			  .enter()
+			    .append("text")
+			    .attr("x", width - 10 + size*1.2)
+		        .attr("y", function(d,i){ return 25 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+	    		.style("fill", "black") //function(d){ return color(d)})
+			    .text(function(d){ return d})
+			    .attr("text-anchor", "left")
+			    .style("alignment-baseline", "middle");
+
+			//same methods for svg1 
+			svg2.append("g")
+				.attr("class", "y axis")
+				.call(d3.axisLeft(yScale));
+
+			svg2.append("text")             
+      			.attr("transform", "translate(" + (width / 2) + " ," + (height + margin.top) + ")")
+      			.style("text-anchor", "middle")
+      			.text("Year");
+
+      		svg2.append("text")
+		      .attr("transform", "rotate(-90)")
+		      .attr("y", 0 - margin.left)
+		      .attr("x",0 - (height / 2))
+		      .attr("dy", "1em")
+		      .style("text-anchor", "middle")
+		      .text("Number of Quakes");   
+
+			svg2.append("path")
+				.datum(five_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FFC300")
+				.attr("d", line);
+			
+			svg2.append("path")
+				.datum(six_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FF5733")
+				.attr("d", line);
+
+			svg2.append("path")
+				.datum(seven_quake)
+				.attr("class", "line")
+				.attr("stroke", "#C70039")
+				.attr("d", line);
+
+			svg2.append("path")
+				.datum(eight_quake)
+				.attr("class", "line")
+				.attr("stroke", "#900C3F")
+				.attr("d", line); 
+
+		    var deaths = [];
+		    data.map(function(d){
+		    	deaths.push(+d["Estimated Deaths"])
+		    });
+
+		   	var radiusScale = d3.scaleLinear()
+		   		.domain([0, d3.max(deaths)])
+		   		.range([2, 20]);
+
+		   	//I'm literally a genius for finally getting this 
+		    svg2.selectAll(".point")
+		    	.data(five_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + yScale(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#FFC300")
+		    	.attr("stroke", "black");
+
+		    svg2.selectAll(".point")
+		    	.data(six_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + yScale(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#FF5733")
+		    	.attr("stroke", "black");
+
+		    svg2.selectAll(".point")
+		    	.data(seven_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + yScale(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#C70039")
+		    	.attr("stroke", "black");
+
+		    svg2.selectAll(".point")
+		    	.data(eight_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + yScale(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#900C3F")
+		    	.attr("stroke", "black");
+
+		    svg.append("div")
+				.attr("class", "pagebreak");
+
+		    //third graph which will use a differing scale
+		    var svg3 = d3.select("body").append("svg")
+				.attr("width", width  + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+			//title3
+			svg3.append("text")
+				.attr("class", "title")
+				.attr("transform", "translate(" + width / 2 + ", 0)")
+				.text("Worldwide Earthquake Stats 2000 - 2015 square root scale")
+				.style("text-anchor", "middle");
+
+			//using sqrt scale for y now
+			var square_scale_y = d3.scaleSqrt()
+				.domain([0, d3.max(list)])
+				.range([height, title_pad]);
+
+			//need new line function as well
+			var line_root = d3.line()
+				.x(function(d) {
+					return xScale(parse(d.year));
+				})
+				.y(function(d) {
+					return square_scale_y(d.y);
+				})
+				.curve(d3.curveMonotoneX);
+
+			svg3.append("g")
+				.attr("class", "x axis")
+				.attr("transform", "translate(0," + height + ")")
+				.call(d3.axisBottom(xScale));
+
+			svg3.selectAll("legend_square")
+			  .data(keys)
+			  .enter()
+			  .append("rect")
+				.attr("x", width - 10)
+			    .attr("y", function(d,i){ return 25 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+			    .attr("width", size)
+			    .attr("height", size)
+			    .style("fill", function(d){ return color(d)})
+
+			svg3.selectAll("labels")
+			    .data(keys)
+			  .enter()
+			    .append("text")
+			    .attr("x", width - 10 + size*1.2)
+		        .attr("y", function(d,i){ return 25 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+	    		.style("fill", "black") //function(d){ return color(d)})
+			    .text(function(d){ return d})
+			    .attr("text-anchor", "left")
+			    .style("alignment-baseline", "middle");
+
+
+			svg3.append("g")
+				.attr("class", "y axis")
+				.call(d3.axisLeft(square_scale_y));
+
+			svg3.append("text")             
+      			.attr("transform", "translate(" + (width / 2) + " ," + (height + margin.top) + ")")
+      			.style("text-anchor", "middle")
+      			.text("Year");
+
+      		svg3.append("text")
+		      .attr("transform", "rotate(-90)")
+		      .attr("y", 0 - margin.left)
+		      .attr("x",0 - (height / 2))
+		      .attr("dy", "1em")
+		      .style("text-anchor", "middle")
+		      .text("Number of Quakes");   
+
+			svg3.append("path")
+				.datum(five_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FFC300")
+				.attr("d", line_root);
+			
+			svg3.append("path")
+				.datum(six_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FF5733")
+				.attr("d", line_root);
+
+			svg3.append("path")
+				.datum(seven_quake)
+				.attr("class", "line")
+				.attr("stroke", "#C70039")
+				.attr("d", line_root);
+
+			svg3.append("path")
+				.datum(eight_quake)
+				.attr("class", "line")
+				.attr("stroke", "#900C3F")
+				.attr("d", line_root); 
+
+		    var deaths = [];
+		    data.map(function(d){
+		    	deaths.push(+d["Estimated Deaths"])
+		    });
+
+		   	var radiusScale = d3.scaleLinear()
+		   		.domain([0, d3.max(deaths)])
+		   		.range([2, 20]);
+
+		   	//I'm literally a genius for finally getting this 
+		    svg3.selectAll(".point")
+		    	.data(five_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + square_scale_y(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#FFC300")
+		    	.attr("stroke", "black");
+
+		    svg3.selectAll(".point")
+		    	.data(six_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + square_scale_y(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#FF5733")
+		    	.attr("stroke", "black");
+
+		    svg3.selectAll(".point")
+		    	.data(seven_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + square_scale_y(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#C70039")
+		    	.attr("stroke", "black");
+
+		    svg3.selectAll(".point")
+		    	.data(eight_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + square_scale_y(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#900C3F")
+		    	.attr("stroke", "black");
+
+
+
+		    svg.append("div")
+				.attr("class", "pagebreak");
+
+
+		    //fouth graph which will use a differing scale
+		    var svg4 = d3.select("body").append("svg")
+				.attr("width", width  + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+			//title3
+			svg4.append("text")
+				.attr("class", "title")
+				.attr("transform", "translate(" + width / 2 + ", 0)")
+				.text("Worldwide Earthquake Stats 2000 - 2015 log scale")
+				.style("text-anchor", "middle");
+
+			//using log scale for y now
+			var log_scale_y = d3.scaleLog()
+				.domain([1, d3.max(list)])
+				.range([height, title_pad]);
+
+			//need new line function as well
+			var line_log = d3.line()
+				.x(function(d) {
+					return xScale(parse(d.year));
+				})
+				.y(function(d) {
+					if (d.y > 0){
+						return log_scale_y(d.y);
+					}
+					else {
+						return height;
+					}
+				})
+				.curve(d3.curveMonotoneX);
+
+			svg4.append("g")
+				.attr("class", "x axis")
+				.attr("transform", "translate(0," + height + ")")
+				.call(d3.axisBottom(xScale));
+
+			svg4.selectAll("legend_square")
+			  .data(keys)
+			  .enter()
+			  .append("rect")
+				.attr("x", width - 10)
+			    .attr("y", function(d,i){ return 25 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+			    .attr("width", size)
+			    .attr("height", size)
+			    .style("fill", function(d){ return color(d)})
+
+			svg4.selectAll("labels")
+			    .data(keys)
+			  .enter()
+			    .append("text")
+			    .attr("x", width - 10 + size*1.2)
+		        .attr("y", function(d,i){ return 25 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+	    		.style("fill", "black") //function(d){ return color(d)})
+			    .text(function(d){ return d})
+			    .attr("text-anchor", "left")
+			    .style("alignment-baseline", "middle");
+
+
+			svg4.append("g")
+				.attr("class", "y axis")
+				.call(d3.axisLeft(log_scale_y));
+
+			svg4.append("text")             
+      			.attr("transform", "translate(" + (width / 2) + " ," + (height + margin.top) + ")")
+      			.style("text-anchor", "middle")
+      			.text("Year");
+
+      		svg4.append("text")
+		      .attr("transform", "rotate(-90)")
+		      .attr("y", 0 - margin.left)
+		      .attr("x",0 - (height / 2))
+		      .attr("dy", "1em")
+		      .style("text-anchor", "middle")
+		      .text("Number of Quakes");   
+
+			svg4.append("path")
+				.datum(five_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FFC300")
+				.attr("d", line_log);
+			
+			svg4.append("path")
+				.datum(six_quake)
+				.attr("class", "line")
+				.attr("stroke", "#FF5733")
+				.attr("d", line_log);
+
+			svg4.append("path")
+				.datum(seven_quake)
+				.attr("class", "line")
+				.attr("stroke", "#C70039")
+				.attr("d", line_log);
+
+			svg4.append("path")
+				.datum(eight_quake)
+				.attr("class", "line")
+				.attr("stroke", "#900C3F")
+				.attr("d", line_log); 
+
+			svg4.selectAll(".point")
+		    	.data(five_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + log_scale_y(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#FFC300")
+		    	.attr("stroke", "black");
+
+		    svg4.selectAll(".point")
+		    	.data(six_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + log_scale_y(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#FF5733")
+		    	.attr("stroke", "black");
+
+		    svg4.selectAll(".point")
+		    	.data(seven_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		return  "translate(" + xScale(parse(d.year)) + "," + log_scale_y(d.y) + ")";
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#C70039")
+		    	.attr("stroke", "black");
+
+		    svg4.selectAll(".point")
+		    	.data(eight_quake)
+		    .enter().append("circle")
+		    	.attr("transform", function(d){
+		    		if(d.y > 0) {return  "translate(" + xScale(parse(d.year)) + "," + log_scale_y(d.y) + ")";}
+		    		else { return "translate(" + xScale(parse(d.year)) + "," + height + ")";}
+		    	})
+		    	.attr("r", function(d) {
+		    		return radiusScale(d.num_deaths);
+		    	})
+		    	.attr("fill", "#900C3F")
+		    	.attr("stroke", "black");
+
+		})
+
+</script> 

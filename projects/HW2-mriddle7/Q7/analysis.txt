@@ -1,0 +1,26 @@
+1. Ease to develop:
+	R: Fairly straightforward, many good libraries exist (ggplot2 etc.), flexible
+	Tableau: Very user friendly UI with drag and drop capabilites
+	D3: Somewhat more front-heavy(i.e. more of a learning curve), but allows for much more fleshed out and complex designs
+
+2. Ease to maintain the visualization:
+	R: Not as integrated with different web formats/browsers. Data changes easyish though
+	Tableau: Also needs integration, and can't really handle data updates at same pace
+	D3: JS, so very easy to change to platform specs, also easily scalable.
+
+3. Usability of end user visualization:
+	R: Not so bad, I'm not as familiar with Shiny but its useful for UI's
+	Tableau: Easy to interact with once software learned, but some upfront difficulty for users
+	D3: Easiest of three with menus/hovers/mouseclicks etc.
+
+4. Scalability to large:
+	R: Definitely scalable with Shiny 
+	Tableau: Probably the weakest of these three, I'm not as familiar with it, but I can't imagine tableau scaling to large data easily
+	D3: Probably the best for scaling since you're essentially building from ground up and can define whatever ability/behavior you are creative enough to think of
+
+5.System requirements:
+	R: At least 256 RAM
+	Tableau: 2 GB RAM
+	D3: Greatest req. memory, also video memory probably
+
+Based on reqs, it looks like I would order R < Tableau < D3 for their needs.

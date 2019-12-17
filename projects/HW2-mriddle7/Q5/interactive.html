@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.line {
+	stroke-width: 3;
+}
+
+.label {
+  font-weight: bold;
+}
+
+.tile {
+  shape-rendering: crispEdges;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+</style>
+<script src="../lib/d3.v5.min.js"></script>
+<script>
+
+	var margin = {top: 20, right: 90, bottom: 30, left: 50},
+    width = 950 - margin.left - margin.right,
+    height = 350 - margin.top - margin.bottom;
+
+    var title_padding = 50;
+
+    d3.csv("state-year-earthquakes.csv").then(function(data){
+
+
+    	var parseDate = d3.timeParse("%Y")
+    	data.map(function(d){
+    		d.rawyear = d.year 
+    		d.year = parseDate(d.year);
+    		d.num_quakes = parseInt(d.count)
+    	})
+
+    	var quake_by_regions = d3.nest()
+    		.key(function(d){
+    			return d["region"];
+    		})
+    		.entries(data);
+
+    	var svg = d3.select("body").append("svg")
+	    	.attr("width", width + margin.left + margin.right)
+	    	.attr("height", height + margin.top + margin.bottom)
+	  	.append("g")
+	    	.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	    var years = [];
+	    for (var i = 0; i < data.length; i++){
+	    		years.push(data[i].year);
+	    }
+
+	    years_unique = [];
+	    for (var i = 0; i < data.length; i++){
+	    	if (years_unique.includes(data[i].rawyear)) {
+	    		continue;
+	    	} else {
+	    		years_unique.push(data[i].rawyear)
+	    	}
+	    }
+
+
+	    regions = [];
+	    quake_by_regions.map(function(d) {
+	    	regions.push(d.key);
+	    })
+
+	    var num_quakes = [];
+	    for (var i = 0; i < data.length; i++) {
+	    	num_quakes.push(data[i].num_quakes);
+	    }
+
+	    quake_year_region = []
+        for (var i = 0; i< quake_by_regions.length; i++) { 
+        	for (var k = 0; k < years_unique.length; k++) {
+    			    new_dict = {}
+        			new_dict["region"] = quake_by_regions[i].key 
+        			new_dict['year'] = years_unique[k]
+        			new_dict['sum_quakes'] = 0
+        			for (var j = 0; j < quake_by_regions[i].values.length; j++) {
+        				if(quake_by_regions[i].values[j].rawyear == years_unique[k]) {
+        					new_dict['sum_quakes'] += quake_by_regions[i].values[j].num_quakes;
+        				}
+        			}
+        	quake_year_region.push(new_dict);
+        	}
+        }
+
+        nested_region_quakes = d3.nest()
+        	.key(function(d) {
+        		return d['region']
+        	})
+        	.entries(quake_year_region);
+
+        actual_quakes = []
+       	for (var i = 0; i < quake_year_region.length; i++){
+       		actual_quakes.push(quake_year_region[i].sum_quakes);
+       	}
+
+
+	    var xScale = d3.scaleTime()
+	    	.domain([d3.min(years), d3.max(years)])
+	    	.range([0, width]);
+
+	    var yScale = d3.scaleLinear()
+	    	.domain([0, d3.max(actual_quakes)])
+	    	.range([height - title_padding, 0]);
+
+	    var colScale = d3.scaleOrdinal()
+	    	.domain(regions)
+	    	.range(["red", "blue", "green", "purple"]);
+
+	    svg.append("g")
+	    	.attr("transform", "translate(" + (width / 4) + ',0)')
+	    .append("text")
+	    	.text("US Earthquakes by Region 2010 - 2015")
+	    	.attr("font-size", '20px');
+
+	    legend = svg.selectAll("legend_circles")
+	    	.data(regions)
+	    .enter()
+	    	.append("g")
+
+	    legend.append("circle")
+	    		.attr("cx", width - 100)
+	    		.attr("cy", function(d,i) {return i * 16})
+	    		.attr("r", "5")
+	    		.attr("fill", function(d) { return colScale(d)});
+
+	    legend.append("text")
+	    	.text(function(d){ return d})
+	    	.attr("x", width - 90)
+	    	.attr("y", function(d, i) { return (i * 16) + 5})
+	    	.attr("font-size", 10);
+
+	    svg.selectAll("point")
+	    	.data(nested_region_quakes[0].values)
+	    .enter()
+	    	.append("circle")
+	    		.attr("fill", colScale(nested_region_quakes[0].values[0].region))
+	    		.attr("cx", function(d) { return xScale(parseDate(d.year))})
+	    		.attr("cy", function(d) {return yScale(d.sum_quakes)})
+	    		.attr("r", 6)
+	    		.attr("stroke", "white")
+	    		.on("mouseover", handlemouseover)
+	    		.on("mouseout", handlemouseoff);
+
+	   	svg.selectAll("point")
+	    	.data(nested_region_quakes[1].values)
+	    .enter()
+	    	.append("circle")
+	    		.attr("fill", colScale(nested_region_quakes[1].values[0].region))
+	    		.attr("cx", function(d) { return xScale(parseDate(d.year))})
+	    		.attr("cy", function(d) {return yScale(d.sum_quakes)})
+	    		.attr("r", 6)
+	    		.attr("stroke", "white")
+	    		.on("mouseover", handlemouseover)
+	    		.on("mouseout", handlemouseoff);
+
+	   	svg.selectAll("point")
+	    	.data(nested_region_quakes[2].values)
+	    .enter()
+	    	.append("circle")
+	    		.attr("fill", colScale(nested_region_quakes[2].values[0].region))
+	    		.attr("cx", function(d) { return xScale(parseDate(d.year))})
+	    		.attr("cy", function(d) {return yScale(d.sum_quakes)})
+	    		.attr("r", 6)
+	    		.attr("stroke", "white")
+	    		.on("mouseover", handlemouseover)
+	    		.on("mouseout", handlemouseoff)
+
+	    svg.selectAll("point")
+	    	.data(nested_region_quakes[3].values)
+	    .enter()
+	    	.append("circle")
+	    		.attr("fill", colScale(nested_region_quakes[3].values[0].region))
+	    		.attr("cx", function(d) { return xScale(parseDate(d.year))})
+	    		.attr("cy", function(d) {return yScale(d.sum_quakes)})
+	    		.attr("r", 6)
+	    		.attr("stroke", "white")
+	    		.on("mouseover", handlemouseover)
+	    		.on("mouseout", handlemouseoff);
+
+
+	    svg.append("g")
+          	.attr("class", "x-axis")
+          	.attr("transform", "translate(0," + (height - title_padding) + ")")
+          	.call(d3.axisBottom(xScale));
+
+        svg.append("g")
+          	.attr("class", "y-axis")
+          	.call(d3.axisLeft(yScale));
+
+    		
+         var line = d3.line()
+         	.x(function(d){
+         		return xScale(parseDate(d.year));
+         	})
+         	.y(function(d){
+         		return yScale(d.sum_quakes);
+         	});
+
+        svg.append("path")
+        	.datum(nested_region_quakes[0].values)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", colScale(nested_region_quakes[0].values[0].region))
+        .attr("d", line);
+
+        svg.append("path")
+        	.datum(nested_region_quakes[1].values)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", colScale(nested_region_quakes[1].values[0].region))
+        .attr("d", line);
+
+        svg.append("path")
+        	.datum(nested_region_quakes[2].values)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", colScale(nested_region_quakes[2].values[0].region))
+        .attr("d", line);
+
+        svg.append("path")
+        	.datum(nested_region_quakes[3].values)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", colScale(nested_region_quakes[3].values[0].region))
+        .attr("d", line);
+
+        region_state_year = []
+        for(var i = 0; i < quake_by_regions.length; i++) {
+        	var something = d3.nest()
+        		.key(function(d){
+        			return d.rawyear;
+        		})
+        		.entries(quake_by_regions[i].values);
+        	region_state_year.push(something);
+        }
+
+        usable_data = []
+        for (var i = 0; i < region_state_year.length; i++) {
+        	var new_dict = {}
+        	new_dict["region"] = regions[i]
+        	new_dict["values"] = region_state_year[i]
+        	usable_data.push(new_dict);
+        }
+
+        function handlemouseover(d){
+
+        	var barChart = d3.select("body").append("svg")
+        		.attr("width", width + margin.left + margin.right)
+	    		.attr("height", height + margin.top + margin.bottom)
+	  		.append("g")
+	    		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	    	var selected_region = d.region;
+	    	var selected_year = d.year;
+
+	    	barXDomain = []
+	    	for (var i = 0; i < usable_data.length; i++) {
+	    		if(usable_data[i].region == selected_region) {
+	    			for(var j = 0; j < usable_data[i].values.length; j++) {
+	    				if (usable_data[i].values[j].key == selected_year) {
+	    					for (var k = 0; k < usable_data[i].values[j].values.length; k++) {
+	    						barXDomain.push(usable_data[i].values[j].values[k].num_quakes);
+	    					}
+	    				}
+	    				}
+	    			}
+	    		}
+
+	    	barYDomain = []
+	    	/*for (var i = 0; i < usable_data.length; i++) {
+	    		if(usable_data[i].region == selected_region) {
+	    			for(var j = 0; j < usable_data[i].values.length; j++) {
+	    				if (usable_data[i].values[j].key == selected_year) {
+	    					for (var k = 0; k < usable_data[i].values[j].values.length; k++) {
+	    						barYDomain.push(usable_data[i].values[j].values[k].state);
+	    					}
+	    				}
+	    				}
+	    			}
+	    		}*/
+
+	    	var barScaleX = d3.scaleLinear()
+	    		.domain([0, d3.max(barXDomain)])
+	    		.range([0, width])
+
+	    	var data_list = []
+	    	for (var i = 0; i < usable_data.length; i++) {
+	    		if(usable_data[i].region == selected_region) {
+	    			for (var j = 0; j < usable_data[i].values.length; j++) {
+	    				if(usable_data[i].values[j].key == selected_year) {
+	    					for (var k = 0; k < usable_data[i].values[j].values.length; k++) {
+
+	    						data_list.push(usable_data[i].values[j].values[k])
+	    						
+	    						/*bars.append("rect")
+	    							.attr("x", 20)
+	    							.attr("y", function(d) {return barScaleY(usable_data[i].values[j].values[k].state)})
+	    						.attr("width", function(d) {return barScaleX(usable_data[i].values[j].values[k].num_quakes)})
+	    						.attr("height", barScaleY.bandwidth())
+	    						.attr("fill", "#916d10");*/
+	    					
+	    					}
+	    				}
+	    			}
+	    		}
+	    	}
+
+	    	data_list.sort(function(a, b){
+	    		return d3.ascending(a.num_quakes, b.num_quakes);
+	    	})
+
+	    	for (var i = 0; i < data_list.length; i++) {
+	    		barYDomain.push(data_list[i].state);
+	    	}
+
+	    	var barScaleY = d3.scaleBand()
+	    		.domain(barYDomain)
+	    		.range([height, 0])
+	    		.paddingInner(0.05)
+	    		.paddingOuter(0.05);
+
+	    	var bars = barChart.selectAll("bars")
+	    		.data(data_list)
+	    	.enter()
+
+
+	    	for (var i = 0; i < data_list.length; i++) {
+	    		bars.append("rect")
+	    			.attr("x", 20)
+	    			.attr("y", function(d) {return barScaleY(data_list[i].state)})
+	    			.attr("width", function(d) {return barScaleX(data_list[i].num_quakes)})
+	    			.attr("height", height / data_list.length - 5)
+	    			.attr("fill", function(d) { return colScale(data_list[i].region)}) // a lovely puke brown;
+	    					
+	    	}
+	    		barChart.append("text")
+	    			.attr("x", width / 4)
+	    			.attr("y", 0)
+	    			.attr("font-size", "15px")
+	    			.text(function(d) {
+	    				return selected_region + 'ern Region Earthquakes ' + selected_year;
+	    			})
+
+        		d3.select(this)
+        			.attr("r", 12); 
+
+        	barChart.append("g")
+          	.attr("class", "x-axis")
+          	.attr("transform", "translate(20," + (height) + ")")
+          	.call(d3.axisBottom(barScaleX));
+
+	        barChart.append("g")
+	          	.attr("class", "y-axis")
+	          	.attr("transform", "translate(20," + 0 + ")")
+	          	.call(d3.axisLeft(barScaleY));
+
+
+	}
+
+        function handlemouseoff(d) {
+        	d3.select(this)
+        		.attr("r", 6)
+
+        	d3.selectAll("svg")
+        		.filter(function(d,i){
+        			return i === 1;
+        		})
+        		.remove()
+        }
+    })
+</script>

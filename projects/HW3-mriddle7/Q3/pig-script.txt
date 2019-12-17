@@ -1,0 +1,24 @@
+reviews = LOAD '$INPUT' AS (marketplace:chararray,customer_id:chararray,review_id:chararray,product_id:chararray,product_parent:chararray,product_title:chararray,product_category:chararray,star_rating:double,helpful_votes:int,total_votes:int,vine:chararray,verified_purchase:chararray,review_headline:chararray,review_body:chararray, review_date:chararray);
+
+
+filtered_verify = FILTER reviews BY verified_purchase == 'Y';
+
+filtered_votes = FILTER filtered_verify BY total_votes >= 30;
+
+filtered_complete = FILTER filtered_votes BY SIZE(review_body) >= 100;
+
+grouped_product = GROUP filtered_complete BY product_category;
+
+avg_rating = FOREACH grouped_product GENERATE
+	group as product_category,
+	AVG($1.star_rating) as avg_stars;
+
+values_ordered = ORDER avg_rating BY avg_stars DESC;
+
+lim_fifteen = LIMIT values_ordered 15;
+
+STORE lim_fifteen INTO '$OUTPUT' USING PigStorage('\t');
+
+
+
+

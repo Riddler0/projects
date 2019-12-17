@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.line {
+	stroke-width: 3;
+}
+
+.label {
+  font-weight: bold;
+}
+
+.tile {
+  shape-rendering: crispEdges;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+</style>
+<script src="../lib/d3.v5.min.js"></script>
+<script>
+
+	//margins
+	var margin = {top: 20, right: 90, bottom: 30, left: 50},
+    	width = 960 - margin.left - margin.right,
+    	height = 500 - margin.top - margin.bottom;
+
+  var bucket_padding = 3;
+  var legend_padding = 50;
+
+
+    //svg for map
+    var svg = d3.select("body").append("svg")
+    	.attr("width", width + margin.left + margin.right)
+    	.attr("height", height + margin.top + margin.bottom)
+  	.append("g")
+    	.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    //self explanatory
+   	var tile_padding_x = 5;
+   	var tile_padding_y = 3;
+
+    //hopefull mouseover can see this now
+    var newsvg;
+
+    //reading in data in an impossible fashion
+    //look at all this useless code that was in the tutorial
+  	d3.csv("earthquakes.csv").then(function(data){
+   		//why is d3 so stupid
+      var new_data = [];
+
+    d3.select("body").append("h1")
+        .text("Visualizing Earthquake Counts by State (2010 - 2015)")
+        .attr("font-size", 5);
+
+      for (var i = 0; i < data.length; i++){
+        for(var j = 0; j < Object.keys(data[i]).length; j++){
+          var new_dict = {};
+          if(Object.keys(data[i])[j] == 'States' || Object.keys(data[i])[j] == 'Category'){
+            continue 
+          }
+          else {
+            new_dict['State'] = data[i]['States'];
+            new_dict['Category'] = data[i]['Category'];
+            new_dict['Year'] = Object.keys(data[i])[j];
+            new_dict['Num_quakes'] = data[i][Object.keys(data[i])[j]];
+          }
+          new_data.push(new_dict);
+        }
+      }
+
+      //i cant believe d3 has something so reasonable in it
+      var nest = d3.nest()
+        .key(function(d){ return d["Category"];})
+        .entries(new_data)
+
+   		//svg for map
+	    var svg = d3.select("body").append("svg")
+	    	.attr("width", width + margin.left + margin.right)
+	    	.attr("height", height + margin.top + margin.bottom)
+	  	.append("g")
+	    	.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+       d3.select("body").append("h2")
+        .text("Range:")
+        .attr("font-size", 10);
+
+      var box = d3.select("body").append("select")
+        .attr("name", "category");
+
+      //select box
+      var options = box.selectAll("option")
+        .data(nest)
+        .enter()
+        .append("option")
+          .text(function(d){
+            return d.key;
+          })
+          .attr("value", function(d){
+            return d.key;
+          });
+
+      mouse_locale = d3.select("body").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", 20);
+
+      function draw_category_heat(data) {
+        d3.selectAll("svg").remove()
+        mouse_locale = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", 20)
+
+        mouse_locale.append("g");
+
+        newsvg = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        var states = []
+        for (var i = 0; i < data.values.length; i++) {
+          if (states.includes(data.values[i].State)) {
+            continue
+            }
+          else {
+            states.push(data.values[i].State);
+            }
+          }
+
+        var years = []
+        for (var i = 0; i < data.values.length; i++) {
+          if (years.includes(data.values[i].Year)) {
+            continue;
+            }
+          else {
+            years.push(data.values[i].Year);
+            }
+          }
+
+        var quakes = []
+        for (var i = 0; i < data.values.length; i++) {
+          quakes.push(parseInt(data.values[i].Num_quakes))
+        }
+
+        var xScale_new = d3.scaleBand()
+          .domain(states)
+          .range([0, width]);
+
+        var yScale_new = d3.scaleBand()
+          .domain(years)
+          .range([(height - legend_padding), 0]);
+
+        colorScale = d3.scaleQuantile()
+        .domain([d3.min(quakes), d3.max(quakes)])
+        .range(["#ffffcc", "#ffeda0", "#fed976", "#feb24c", "#fd8d3c", "#fc4e2a", "#e31a1c", "#bd0026", "#800026"]);
+
+        legend_keys = colorScale.quantiles()
+        for (var i = 0; i < legend_keys.length; i++) {
+          legend_keys[i] = Math.round(legend_keys[i], 2);
+        }
+        legend_keys.unshift(0);
+
+       var leg_box =  newsvg.selectAll(".leg_recs")
+            .data(legend_keys)
+          .enter()
+            .append("g")
+
+        leg_box.append("rect")
+            .attr("class", "leg_recs")
+            .attr("x", function(d, i){
+                  return width / legend_keys.length * i; 
+                })
+            .attr("y", height - 5)
+            .attr("fill", function(d){
+                  return colorScale(d);
+            })
+            .attr("width", width / legend_keys.length)
+            .attr("height", 20)
+
+        leg_box.append("text")
+            .text(function(d, i){
+              return legend_keys[i]
+            })
+            .attr("x", function(d, i) {
+              return width / legend_keys.length * i;
+            })
+            .attr("y", height - 5)
+            .attr("fill", "black");
+
+        /*leg_box.append("text")
+          .text("Count")
+          .attr("x", width / 2)
+          .attr("y", height + 25)
+          .attr("fill", "black")
+          .attr("font-size", 20);*/
+          
+
+        newsvg.append("g")
+          .attr("class", "x-axis")
+          .attr("transform", "translate(0," + (height - legend_padding) + ")")
+          .call(d3.axisBottom(xScale_new));
+
+        newsvg.append("g")
+          .attr("class", "y-axis")
+          .call(d3.axisLeft(yScale_new));
+
+        newsvg.selectAll(".tile")
+          .data(data.values)
+        .enter()
+          .append("rect")
+          .attr("class", "tile")
+          .attr("x", function(d) {
+            return xScale_new(d.State) + bucket_padding;
+          })
+          .attr("y", function(d) {
+            return yScale_new(d.Year);
+          })
+          .attr("width", width / states.length - bucket_padding)
+          .attr("height", (height - legend_padding) / years.length - bucket_padding)
+          .attr("fill", function(d) {
+            return colorScale(d.Num_quakes);
+          })
+          .attr("rx", 5);
+
+        newsvg.selectAll("rect")
+          .on("mouseover", handle_mouseover)
+          .on("mouseout", handle_mouse_out)
+
+      } // end dropbox draw function
+
+      function handle_mouseover(d, i) {
+
+          if (typeof d.Year !== 'undefined') {
+            mouse_locale.select("g")
+            .append("text")
+            .text(d.State + ' ' + d.Year + ": " + d.Num_quakes)
+            .attr("x", width / 2)
+            .attr("y", 20)
+            .attr("font-size", 15)
+            .attr("text-anchor", "center");
+          }
+}
+      function handle_mouse_out(d, i) {
+            // Select text by id and then remove
+            mouse_locale.selectAll("text")
+              .remove();
+          }
+
+      //draw an initial pic (category 10 to 99);
+      draw_category_heat(nest[0]);
+
+      
+
+      d3.select("select")
+        .on("change", function() {
+          var newdata = d3.select("select").node().value
+          for (var i = 0; i < nest.length; i++){
+            if(nest[i].key === newdata){
+              draw_category_heat(nest[i]);
+            }
+        }
+});
+      //everything beneath this is broken currently
+
+      /*
+   		var xScale = d3.scaleBand()
+   			.domain(keys)
+   			.range([0, width]);
+
+   		var yScale = d3.scaleBand()
+   			.domain(years)
+   			.range([height, 0]);
+   		//x axis and rotate labels to fit sorta
+   		svg.append("g")
+   			.attr("class", "x_axis")
+   			.attr("transform", "translate(0,"+ (height - 40) + ")")
+   			.call(d3.axisBottom(xScale).ticks(30))
+      	.selectAll("text")	
+	        .style("text-anchor", "end")
+	        .attr("dx", "-.8em")
+	        .attr("dy", ".15em")
+	        .attr("transform", "rotate(-75)");
+
+   		svg.append("g")
+  			.attr("class", "y_axis")
+  			.attr("transform", "translate(0,"+ (-40) + ")")
+  			.call(d3.axisLeft(yScale)); */
+
+
+
+      /*
+  		//lets see if I can get some rectangles to appear (I can but now how do i get the right ones lel)
+  		svg.selectAll(".tile")
+  			.data(data)
+  		.enter().append("rect")
+  			.attr("class", "tile")
+  			.attr("x", function(d){
+  				return xScale(d.States)
+  			})
+  			.attr("y", yScale("2010"))
+  			.attr("fill", "black")
+  			.attr("width", (width / 30) - tile_padding_x)
+  			.attr("height", (height / 6) - tile_padding_y);
+
+  		svg.selectAll(".tile")
+  			.append("rect")
+  			.data(data)
+  			.attr("class", "tile")
+  			.attr("x", function(d){
+  				return xScale(d.States)
+  			})
+  			.attr("y", yScale("2011"))
+  			.attr("fill", "black")
+  			.attr("width", (width / 30) - tile_padding_x)
+  			.attr("height", (height / 6) - tile_padding_y);
+*/
+});
+
+
+
+
+
+</script>

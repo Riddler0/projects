@@ -1,0 +1,1 @@
+You might want to use non-linear scales when you have data that is skewed towards large values. Also, as in the case with earthquakes, some things might be on a multiplicative sort of factor.

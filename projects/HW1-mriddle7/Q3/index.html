@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Lego Sets by Year From Rebrickable</title>
+        <script type="text/javascript" src="lib/d3/d3.min.js"></script>
+        <style> div.bar {
+            display: inline-block;
+            width: 10px;
+            background-color: blue;
+            margin-right: 3px;
+            }
+
+            .axis path,
+            .axis line {
+                stroke: black;
+                shape-rendering: crispEdges;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="text/javascript">
+            d3.csv("q3.csv").then(function(data) {
+                year_list = [];
+                data.forEach(function(d, i) {
+                    year_list[((i - 1)/3)] = d.year
+                });
+
+                data.forEach(function(d) {
+                    d.year = Date.parse(d.year)
+                    d.running_total = parseInt(d.running_total);
+                })
+
+                var w = 1000;
+                var h = 500;
+                var padding = 40;
+                var barPadding = 2;
+
+                var xScale = d3.scaleBand()
+                    .domain(year_list)
+                    .range([0, w - padding]); 
+
+                var yScale = d3.scaleLinear()
+                    .domain([0, d3.max(data, function(d) { return d['running_total']; })])
+                    .range([h, 0]);
+
+                var yScale2 = d3.scaleLinear()
+                    .domain([0, d3.max(data, function(d) { return d['running_total']; })])
+                    .range([0, h - padding]);
+
+                var xAxis = d3.axisBottom()
+                    .scale(xScale);
+
+                var yAxis = d3.axisLeft()
+                    .scale(yScale);
+
+                var svg = d3.select("body")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", h);
+
+                svg.selectAll("rect")
+                    .data(data)
+                    .enter()
+                    .append("rect")
+                    .attr("x", function(d, i) {
+                        return ((i * ((w - padding) / data.length)) + padding);
+                    })
+                    .attr("y", function(d) {
+                        return h - padding - yScale2(d['running_total']);
+                    })
+                    .attr("width", w / data.length - barPadding)
+                    .attr("height", function(d) {
+                        return yScale2(d['running_total']);
+                    })
+                    .attr("fill", "red");
+
+                svg.append("g")
+                    .attr("class", "axis")
+                    .attr("transform", "translate(" + padding + ',' + (h - padding) + ")")
+                    .call(d3.axisBottom(xScale));
+
+                svg.append("g")
+                    .attr("class", "axis")
+                    .attr("transform", "translate(" + padding  + ',' + 10 + ")")
+                    .call(yAxis);
+
+                svg.append("text")
+                    .attr("x", (w / 2))             
+                    .attr("y", padding)
+                    .attr("text-anchor", "middle")  
+                    .style("font-size", "20px") 
+                    .style("text-decoration", "bold")  
+                    .text("Lego Sets by Year from Rebrickable");
+
+                svg.append("text")
+                    .attr("x", w - padding)
+                    .attr("y", h - padding / 3)
+                    .attr("text-anchor", "right")
+                    .style("font-size", "10px")
+                    .text("mriddle7");
+
+            });
+		// Type some d3 stuff here
+        </script>
+    </body>
+</html>

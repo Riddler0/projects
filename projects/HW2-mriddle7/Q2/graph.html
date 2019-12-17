@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script src="../lib/d3.v5.min.js"></script>
+<style>
+
+path.link {
+  fill: none;
+  stroke: #666;
+  stroke-width: 1.5px;
+}
+
+circle {
+  stroke: #fff;
+  stroke: black;
+  stroke-width: 1.5px;
+}
+
+text {
+  fill: #000;
+  font: 10px sans-serif;
+  pointer-events: none;
+}
+
+</style>
+<body>
+<script>
+
+// get the data
+links =  [
+  {
+    "source": "C",
+    "target": "Java",
+    "value": 1
+  },
+  {
+    "source": "JavaScript",
+    "target": "Java",
+    "value": 0
+  },
+  {
+    "source": "JavaScript",
+    "target": "Ruby",
+    "value": 1
+  },
+  {
+    "source": "Haskel",
+    "target": "Java",
+    "value": 0
+  },
+  {
+    "source": "Haskel",
+    "target": "JSON",
+    "value": 1
+  },
+  {
+    "source": "JavaScript",
+    "target": "Python",
+    "value": 0
+  },
+  {
+    "source": "Haskel",
+    "target": "Python",
+    "value": 1
+  },
+  {
+    "source": "Objact C",
+    "target": "Java",
+    "value": 0
+  },
+  {
+    "source": "Sharp",
+    "target": "Java",
+    "value": 1
+  },
+  {
+    "source": "Clojure",
+    "target": "C",
+    "value": 0
+  },
+  {
+    "source": "AWK",
+    "target": "C",
+    "value": 1
+  },
+  {
+    "source": "LISP",
+    "target": "JSON",
+    "value": 0
+  },
+  {
+    "source": "Cobra",
+    "target": "Python",
+    "value": 1
+  },
+  {
+    "source": "JSON",
+    "target": "Python",
+    "value": 0
+  },
+  {
+    "source": "Pascal",
+    "target": "Haskel",
+    "value": 1
+  },
+  {
+    "source": "PHP",
+    "target": "C",
+    "value": 0
+  },
+  {
+    "source": "Windows-Powershell",
+    "target": "Sharp",
+    "value": 1
+  },
+  {
+    "source": "Windows-Powershell",
+    "target": "Vala",
+    "value": 0
+  },
+  {
+    "source": "VBScript",
+    "target": "Objact C",
+    "value": 1
+  },
+  {
+    "source": "VisualBasic.NET",
+    "target": "Sharp",
+    "value": 0
+  },
+  {
+    "source": "AppleScript",
+    "target": "LISP",
+    "value": 1
+  },
+  {
+    "source": "C-Sharp",
+    "target": "Java",
+    "value": 0
+  },
+  {
+    "source": "Scala",
+    "target": "Java",
+    "value": 1
+  },
+  {
+    "source": "C++",
+    "target": "C",
+    "value": 0
+  },
+  {
+    "source": "Groovy",
+    "target": "Ruby",
+    "value": 1
+  },
+  {
+    "source": "Logo",
+    "target": "LISP",
+    "value": 0
+  },
+  {
+    "source": "Factor",
+    "target": "Haskel",
+    "value": 1
+  },
+  {
+    "source": "APL",
+    "target": "J",
+    "value": 0
+  },
+  {
+    "source": "J",
+    "target": "Java",
+    "value": 1
+  }
+];
+
+var nodes = {};
+
+// Compute the distinct nodes from the links.
+links.forEach(function(link) {
+    link.source = nodes[link.source] ||
+        (nodes[link.source] = {name: link.source});
+    link.target = nodes[link.target] ||
+        (nodes[link.target] = {name: link.target});
+});
+
+var width = 1200,
+    height = 700;
+
+var force = d3.forceSimulation()
+    .nodes(d3.values(nodes))
+    .force("link", d3.forceLink(links).distance(100))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force("x", d3.forceX())
+    .force("y", d3.forceY())
+    .force("charge", d3.forceManyBody().strength(-250))
+    .alphaTarget(1)
+    .on("tick", tick);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+// add the links and the arrows
+var path = svg.append("g")
+.selectAll("path")
+.data(links)
+.enter()
+.append("path")
+.attr("class", function(d) { return "link " + d.type; })
+
+//Edges with value of 1 should appear thick and green
+path.filter(function(d) {return d.value == 1})
+	.style("stroke", "green")
+	.style("stroke-width", "5px");
+
+//Edge with zero appeaer dashed thin, black
+path.filter(function(d) {return d.value == 0})
+	.style("stroke", "black")
+	.style("stroke-width", "2px")
+	.style("stroke-dasharray", ("3, 3"));
+
+// define the nodes
+var node = svg.selectAll(".node")
+    .data(force.nodes())
+  .enter().append("g")
+    .attr("class", "node")
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended)
+      );
+
+node.on("dblclick", doubleclicked);
+
+// add the nodes
+node.append("circle");
+
+
+var circles = d3.selectAll("circle")
+
+//add titles
+var padding = 5
+node.append("text")
+    .attr("dx", function(d) {
+		d.weight = links.filter(function(l) {
+			return l.source.name == d.name || l.target.name == d.name;
+		}).length
+
+		var min_radius = 1
+		return (min_radius + d.weight * 3) + padding; 
+    })
+    .attr("dy", ".35em")
+    .text(function(d) { return d.name});
+
+
+//define scale for nodes
+var node_scale = d3.scaleLinear()
+	.domain(0, 10)
+	.range(2, 10);
+
+//Set the colors for gradient
+
+//Add Node degree to radius
+node.append("circle")
+    .attr("r", function(d) {
+		d.weight = links.filter(function(l) {
+			return l.source.name == d.name || l.target.name == d.name;
+		}).length
+
+		var min_radius = 1
+		return min_radius + d.weight * 3; 
+	});
+
+var colorScale = d3.scaleLinear()
+	.domain([1, 6])
+	.range(["lightblue", "blue"]);
+
+
+svg.selectAll("circle")
+	.style("fill", function(d) {
+		d.weight = links.filter(function(l) {
+			return l.source.name == d.name || l.target.name == d.name;
+		}).length
+		return colorScale(d.weight)
+	});
+
+// add the curvy lines
+function tick() {
+    path.attr("d", function(d) {
+        var dx = d.target.x - d.source.x,
+            dy = d.target.y - d.source.y,
+            dr = Math.sqrt(dx * dx + dy * dy);
+        return "M" +
+            d.source.x + "," +
+            d.source.y + "A" +
+            dr + "," + dr + " 0 0,1 " +
+            d.target.x + "," +
+            d.target.y;
+    });
+
+    node
+        .attr("transform", function(d) {
+        return "translate(" + d.x + "," + d.y + ")"; })
+};
+
+function dragstarted(d) {
+      if (!d3.event.active) force.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    };
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+};
+
+function dragended(d) {
+  if (!d3.event.active) force.alphaTarget(0);
+  if (d.fixed == true){
+     d.fx = d.x;
+     d.fy = d.y;
+  }
+  else{
+    d.fx = null;
+    d.fy = null;
+  }
+
+};
+
+function doubleclicked(d) {
+	var circle = d3.select(this).selectAll("circle");
+	//something that pins position after double click and changes color;
+	if (d.fixed === true) {
+		circle.style("fill", function(d) {
+		d.weight = links.filter(function(l) {
+			return l.source.name == d.name || l.target.name == d.name;
+		}).length
+		return colorScale(d.weight)
+		});
+		d.fixed = false;
+		d.fx = null;
+		d.fy = null;
+		/*function(d) {
+		d.weight = links.filter(function(l) {
+			return l.source.name == d.name || l.target.name == d.name;
+		}).length
+		return colorScale(d.weight)*/
+	}
+	else {
+		circle.style("fill", "red");
+		d.fx = d.x;
+		d.fy = d.y;
+		d.fixed = true;
+	}
+}
+
+</script>
+</body>
+</html>
